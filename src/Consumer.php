@@ -4,21 +4,28 @@
 namespace Broker;
 
 
+use Psr\Log\LoggerInterface;
 use Workerman\Worker;
 
 class Consumer
 {
-    protected $worker;
-    protected $logger;
+    protected Worker $worker;
+    protected LoggerInterface $logger;
+    protected int $id;
 
-    public function __construct($logger)
+    public function __construct(int $id,LoggerInterface $logger)
     {
         $this->worker = new Worker();
-        $this->worker->onWorkerStart = [$this,'consume'];
+        $this->worker->onWorkerStart = [$this, 'consume'];
+        $this->logger = $logger;
+        $this->id = $id;
     }
 
-    public function consume(){
-
-        file_put_contents("log.log",rand(0,10),FILE_APPEND);
+    public function consume()
+    {
+        while (true) {
+            $this->logger->info($this->id .' test');
+            sleep(1);
+        }
     }
 }
