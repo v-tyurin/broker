@@ -1,0 +1,19 @@
+{
+    "name": "null/broker",
+    "type": "project",
+    "require": {
+        "nmred/kafka-php": "v0.2.0.8",
+        "workerman/workerman": "^4.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Broker\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Null",
+            "email": "neonwired@gmail.com"
+        }
+    ]
+}
