@@ -25,6 +25,9 @@ services:
     build:
       context: .
       dockerfile: BuildCosumer
+    environment:
+      CONSUME_WORKERS: 1000
+      USE_STDOUT: "true"
     depends_on:
       - kafka
       - zookeeper

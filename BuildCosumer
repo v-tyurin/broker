@@ -1,0 +1,4 @@
+FROM php:7.4-cli
+COPY . /usr/app
+WORKDIR /usr/app
+CMD [ "php", "./consumer.php", "start"]

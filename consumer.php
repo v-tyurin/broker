@@ -10,11 +10,12 @@ if (!ini_get('date.timezone')) {
     ini_set('date.timezone', date_default_timezone_get()); //fix for workerman trouble with timezone
 }
 
+sleep(1);//warmup
 
 $workers = [];
 $countWorkers = $_ENV["CONSUME_WORKERS"] ?? 1;
-$useStdout = (bool)($_ENV["USE_STDOUT"] ?? true);
-$mux = new \Broker\Mux();
+$useStdout = (bool)($_ENV["USE_STDOUT"] ?? false);
+
 
 $logger = new \Monolog\Logger('logger');
 for ($i = 0; $i < $countWorkers; $i++) {
@@ -25,8 +26,8 @@ for ($i = 0; $i < $countWorkers; $i++) {
         $logger->pushHandler(new StreamHandler(__DIR__ . '/consumer.log', Logger::INFO));
     }
 
-    $workers[] = new \Broker\Consumer($i, $logger);
+    $workers[] = new \Broker\Consumer($i, $logger,15);
 }
+$mux = new \Broker\Mux($workers,$logger);
 
 Worker::runAll();
-
