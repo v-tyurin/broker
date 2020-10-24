@@ -11,35 +11,36 @@ $logger = new Logger('logger');
 $logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
 
-$config = \Kafka\ProducerConfig::getInstance();
-$config->setMetadataRefreshIntervalMs(10000);
-//workaround for hostname
+$conf = new RdKafka\Conf();
 $ip = gethostbyname('kafka');
-var_dump($ip);
-$config->setMetadataBrokerList('127.0.0.1:9092');
+$conf->set('metadata.broker.list', "$ip:9092");
+//$conf->set('enable.idempotence', 'true');
 
-$config->setBrokerVersion('2.6.0.0');
-$config->setRequiredAck(0);
-$config->setIsAsyn(false);
-$config->setProduceInterval(500);
-$producer = new \Kafka\Producer();
-$producer->setLogger($logger);
+$producer = new RdKafka\Producer($conf);
+
+$topic = $producer->newTopic("main");
+
 while (true){
     $sendArray = [];
     for($account_id = 0; $account_id < 1000; $account_id++) {
-
         $countTasks = mt_rand(1,10);
         for ($taskOrderNumber = 0;$taskOrderNumber<$countTasks;$taskOrderNumber++){
-            $sendArray[] =[
-                'topic' => 'main',
-                'value' => 'account_id: '.$account_id.' payload '.$taskOrderNumber,
-                'key' => $account_id, // key for partitioning
-            ];
+            $topic->produce(RD_KAFKA_PARTITION_UA, 0, 'account_id: '.$account_id.' payload '.$taskOrderNumber,$account_id);
+            $producer->poll(0);
         }
-
-
     }
-    $result = $producer->send($sendArray);
-    var_dump('sended '.count($sendArray).' tasks');
-    sleep(15);
+
+    for ($flushRetries = 0; $flushRetries < 10; $flushRetries++) {
+        $result = $producer->flush(10000);
+        if (RD_KAFKA_RESP_ERR_NO_ERROR === $result) {
+            $logger->info("messages sended");
+            break;
+        }
+    }
+
+    if (RD_KAFKA_RESP_ERR_NO_ERROR !== $result) {
+        $logger->info("error on send");
+    }
+
+      sleep(2);
 }
