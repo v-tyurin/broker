@@ -14,18 +14,13 @@ use Workerman\Worker;
 class Mux
 {
 
-    protected Worker $worker;
-
-    /** @var Consumer[] $workers */
-    protected array $workers=[];
-
-    protected array $workersMetadata = [];
+    protected Consumer $worker;
 
     protected LoggerInterface $logger;
 
     protected KafkaConsumer $muxConsumer;
 
-    public function __construct(array $workers, LoggerInterface $logger=null)
+    public function __construct(Consumer $worker, LoggerInterface $logger=null)
     {
         if ($logger===null){
             $logger = new Logger('logger');
@@ -41,14 +36,10 @@ class Mux
         $conf->setRebalanceCb(function (KafkaConsumer $kafka, $err, array $partitions = null) {
             switch ($err) {
                 case RD_KAFKA_RESP_ERR__ASSIGN_PARTITIONS:
-                    echo "Assign: ";
-                    var_dump($partitions);
                     $kafka->assign($partitions);
                     break;
 
                 case RD_KAFKA_RESP_ERR__REVOKE_PARTITIONS:
-                    echo "Revoke: ";
-                    var_dump($partitions);
                     $kafka->assign(NULL);
                     break;
 
@@ -57,39 +48,30 @@ class Mux
             }
         });
 
-        $conf->set('group.id', 'cosumer');
+        $conf->set('group.id', 'consumer');
 
-        $conf->set('metadata.broker.list', $ip);
-        $conf->set('auto.offset.reset', 'earliest');
+        $conf->set('metadata.broker.list', "$ip");
+        $conf->set('auto.offset.reset', 'latest');
 
         $consumer = new KafkaConsumer($conf);
         $consumer->subscribe(['main']);
         $this->muxConsumer = $consumer;
 
-
-        $this->worker = new Worker();
-        $this->worker->name = 'mux';
-        $this->worker->onWorkerStart = [$this, 'run'];
-        $this->workers = $workers;
+        $this->worker = $worker;
 
     }
 
     public function run(){
-        echo "Waiting for partition assignment... (make take some time when\n";
-        echo "quickly re-joining the group after leaving it.)\n";
 
         while (true) {
-            $message = $this->muxConsumer->consume(120*1000);
+            $message = $this->muxConsumer->consume(20*1000);
             switch ($message->err) {
                 case RD_KAFKA_RESP_ERR_NO_ERROR:
-                    var_dump($message);
                     $this->processRequest($message);
                     break;
                 case RD_KAFKA_RESP_ERR__PARTITION_EOF:
-                    echo "No more messages; will wait for more\n";
                     break;
                 case RD_KAFKA_RESP_ERR__TIMED_OUT:
-                    echo "Timed out\n";
                     break;
                 default:
                     throw new \Exception($message->errstr(), $message->err);
@@ -99,8 +81,10 @@ class Mux
     }
 
     public function processRequest($message){
-        var_dump($message['message']['key']);
+        $this->worker->pushTask($message->payload);
+        sleep(1);
+//        var_dump($message->payload);
 //            $logger->info($message['message']['key'].' '.$message['message']['value']);
-        usleep(1000000);
+//        usleep(1000000);
     }
 }

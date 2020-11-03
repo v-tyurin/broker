@@ -6,13 +6,14 @@ use Monolog\Logger;
 require __DIR__ . "/vendor/autoload.php";
 
 date_default_timezone_set('PRC');
-sleep(1);//warmup
+sleep(20);//warmup
 $logger = new Logger('logger');
 $logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
 
 
 $conf = new RdKafka\Conf();
 $ip = gethostbyname('kafka');
+var_dump($ip);
 $conf->set('metadata.broker.list', "$ip:9092");
 //$conf->set('enable.idempotence', 'true');
 
@@ -36,11 +37,13 @@ while (true){
             $logger->info("messages sended");
             break;
         }
+        $logger->info("try");
     }
 
     if (RD_KAFKA_RESP_ERR_NO_ERROR !== $result) {
         $logger->info("error on send");
+        $logger->info($result);
     }
 
-      sleep(2);
+      sleep(90);
 }

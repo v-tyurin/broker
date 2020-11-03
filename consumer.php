@@ -8,27 +8,17 @@ use Monolog\Logger;
 use Workerman\Worker;
 
 date_default_timezone_set('PRC');
+sleep(40);//warmup
 
-
-
-sleep(1);//warmup
-
-$workers = [];
-$countWorkers = $_ENV["CONSUME_WORKERS"] ?? 1;
-$useStdout = (bool)($_ENV["USE_STDOUT"] ?? true);
-
+$useStdout = (array_key_exists("USE_STDOUT",$_SERVER) && $_SERVER["USE_STDOUT"]==='true');
 $logger = new \Monolog\Logger('logger');
-
-for ($i = 0; $i < $countWorkers; $i++) {
-
-    if ($useStdout) {
-        $logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
-    } else {
-        $logger->pushHandler(new StreamHandler(__DIR__ . '/consumer.log', Logger::DEBUG));
-    }
-
-    $workers[] = new \Broker\Consumer($i, $logger,15);
+if ($useStdout){
+    $logger->pushHandler(new StreamHandler('php://stdout', Logger::DEBUG));
+}else{
+    $logger->pushHandler(new StreamHandler(__DIR__.'/consumerlogger.log', Logger::DEBUG));
 }
-$logger->info('test info');
-$mux = new \Broker\Mux($workers,$logger);
-Worker::runAll();
+
+$worker = new \Broker\Consumer($logger);
+
+$mux = new \Broker\Mux($worker,$logger);
+$mux->run();

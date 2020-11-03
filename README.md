@@ -13,3 +13,4 @@
 
 ## Запуск
 
+docker-compose up 
